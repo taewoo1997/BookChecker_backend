@@ -1,6 +1,7 @@
 import argparse
 
 import os
+os.environ['KMP_DUPLICATE_LIB_OK']='True' # 라이브러리 충돌 해결
 # limit the number of cpus used by high performance libraries
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
@@ -226,8 +227,12 @@ def run(
                             bbox_h = output[3] - output[1]
                             # Write MOT compliant results to file
                             with open(txt_path + '.txt', 'a') as f:
-                                f.write(('%g ' * 10 + '\n') % (frame_idx + 1, id, bbox_left,  # MOT format
-                                                               bbox_top, bbox_w, bbox_h, -1, -1, -1, i))
+                                if save_conf: # conf 값 같이 저장
+                                    f.write(('%g ' * 10 + '%.2f ' + '\n') % (frame_idx + 1, id, bbox_left,  # MOT format
+                                                                    bbox_top, bbox_w, bbox_h, -1, -1, -1, i, conf))
+                                else:
+                                    f.write(('%g ' * 10 + '\n') % (frame_idx + 1, id, bbox_left,  # MOT format
+                                                                    bbox_top, bbox_w, bbox_h, -1, -1, -1, i))
 
                         if save_vid or save_crop or show_vid:  # Add bbox to image
                             c = int(cls)  # integer class
@@ -237,7 +242,7 @@ def run(
                             annotator.box_label(bboxes, label, color=colors(c, True))
                             if save_crop:
                                 txt_file_name = txt_file_name if (isinstance(path, list) and len(path) > 1) else ''
-                                save_one_box(bboxes, imc, file=save_dir / 'crops' / txt_file_name / names[c] / f'{id}' / f'{p.stem}.jpg', BGR=True)
+                                save_one_box(bboxes, imc, file=save_dir / 'crops' / txt_file_name / names[c] / '{0:02d}'.format(id) / f'{p.stem}.jpg', BGR=True)
 
                 LOGGER.info(f'{s}Done. YOLO:({t3 - t2:.3f}s), StrongSORT:({t5 - t4:.3f}s)')
 
@@ -259,6 +264,7 @@ def run(
                         vid_writer[i].release()  # release previous video writer
                     if vid_cap:  # video
                         fps = vid_cap.get(cv2.CAP_PROP_FPS)
+                        # fps = 30
                         w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                         h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                     else:  # stream
